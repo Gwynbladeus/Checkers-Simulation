@@ -19,12 +19,10 @@ import generic.List;
  *
  */
 public class Console extends JPanel{
-
-	//TODO eine printCommand, print, printWarning, printError methode (oder so)
 	private DLList<String> previousCommands;
 
 	private List<CommandListener> listener;
-
+	private boolean pattDecision;
 	private JScrollPane scrollpaneOutput;
 	private JScrollPane scrollpaneInput;
     public JTextArea output;
@@ -125,6 +123,11 @@ public class Console extends JPanel{
 		case "sayhello":
 			printCommandOutput("This is an easteregg!!:", "Hello World");
 			break;
+		case "Yes":
+			if(pattDecision == true){
+				//TODO linking to finish game method in gmlc
+			}
+			break;
 		default:
 			wasProcessed = false;
 			break;
@@ -169,5 +172,8 @@ public class Console extends JPanel{
 	public void updateForeground(Color color){
 		output.setForeground(color);
 		input.setForeground(color);
+	}
+	public void enablePattDecision(boolean b) {
+		pattDecision = b; 
 	}
 }

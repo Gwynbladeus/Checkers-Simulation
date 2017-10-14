@@ -69,7 +69,7 @@ public class GUI extends JFrame{
 	private void createWindow(){	
 		setResizable(true);
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.X_AXIS));
-		dameWhite = new ImageIcon();
+		dameWhite = new ImageIcon("resources/Icons/dame.png");
 		setIconImage(dameWhite.getImage());
 				
 		setJMenuBar(createMenuBar());

@@ -23,6 +23,7 @@ import generic.List;
 @SuppressWarnings("serial")
 public class PlayfieldPanel extends JPanel implements PlayfieldDisplay, Player{
 
+	public ImageIcon dame;
 	private Playfield playfield;
 	private JButton[][] buttons;
 	GameLogic gamelogic;
@@ -33,11 +34,11 @@ public class PlayfieldPanel extends JPanel implements PlayfieldDisplay, Player{
 	
 	//the PlayfieldPanel must support up to two player
 	FigureColor figurecolor;
-	boolean twoPlayerMode = false;
 	List<Figure> jumpFigures;
 
 	public PlayfieldPanel(GameLogic pGamelogic, Console pConsole){
 		super();
+		dame = new ImageIcon("resources/Icons/dame.png");
 		gamelogic = pGamelogic;
 		playfield = gamelogic.getPlayfield();
 		playfield.setPlayfieldDisplay(this);
@@ -98,7 +99,7 @@ public class PlayfieldPanel extends JPanel implements PlayfieldDisplay, Player{
 	public void setButtonColor(int x, int y, Color color){
 		buttons[x][y].setBackground(color);
 	}
-	private void setButtonIcon(int x, int y, Icon icon) {
+	private void setButtonIcon(int x, int y, ImageIcon icon) {
 		buttons[x][y].setIcon(icon);
 	}
 
@@ -114,8 +115,8 @@ public class PlayfieldPanel extends JPanel implements PlayfieldDisplay, Player{
 	public void updateField(int x, int y) {
 		if(playfield.isOccupied(x, y)){
 			switch (playfield.field[x][y].getFigureType()){
-				case KING:// TODO add icon for king
-					setButtonIcon(x, y, null);
+				case KING:
+					setButtonIcon(x, y, dame);
 				case NORMAL:
 					setButtonIcon(x, y, null);
 					switch (playfield.field[x][y].getFigureColor()){
@@ -167,22 +168,27 @@ public class PlayfieldPanel extends JPanel implements PlayfieldDisplay, Player{
 				Move m = Move.makeMove(coords);
 				if(m.isInvalid()){
 					//TODO cancel move
+					buttons[coords[0][0]][coords[0][1]].setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
 					alreadyOneMove = false;
 					return;
 				}
 				else {
 					if(m.getMoveType() == MoveType.JUMP){
-						//TODO look for possibilities to multijump
-					}
-					else{
-						buttons[coords[0][0]][coords[0][1]].setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
-						alreadyOneMove = false;
-						if(twoPlayerMode){
-							//toggle color
-							figurecolor = (figurecolor == FigureColor.RED) ? FigureColor.WHITE : FigureColor.RED;
+						if(gamelogic.testForMultiJump(m.getX(), m.getY())){
+							//TODO do multijump stuff
+							return;
 						}
-						gamelogic.makeMove(m);
+						else {
+							
+						}
 					}
+					buttons[coords[0][0]][coords[0][1]].setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+					alreadyOneMove = false;
+					if(gamelogic.getTwoPlayerMode()){
+						//toggle color
+						figurecolor = (figurecolor == FigureColor.RED) ? FigureColor.WHITE : FigureColor.RED;
+					}
+					gamelogic.makeMove(m);
 				}
 			}
 		}
@@ -212,7 +218,7 @@ public class PlayfieldPanel extends JPanel implements PlayfieldDisplay, Player{
 		}
 		else {//two players are wanted
 			figurecolor = FigureColor.RED; //red always starts
-			twoPlayerMode = true;
+			gamelogic.setTwoPlayerMode(true);
 		}
 	}
 	@Override

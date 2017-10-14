@@ -11,6 +11,7 @@ import javax.swing.*;
 
 public class ColorSettings extends JFrame{
 
+	private ImageIcon colorSettingsIcon;
 	private JPanel foregroundPanel;
     private JSlider[] foregroundSlider;
     private JLabel labelBg;
@@ -29,6 +30,8 @@ public class ColorSettings extends JFrame{
 		updateColors();
 	}
 	private void initialize(boolean random) {
+		colorSettingsIcon = new ImageIcon("resources/Icons/colorChanger.png");
+		setIconImage(colorSettingsIcon.getImage());
 		backgroundSlider = new JSlider[3];
 		foregroundSlider = new JSlider[3];
 		if(random){
