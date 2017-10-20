@@ -34,7 +34,6 @@ public class GameLogic {
 	private boolean twoPlayerMode = false;
 	private FigureColor inTurn;
 	private GUI gui;
-
 	public GameLogic(){
 		this(new Playfield());
 	}
@@ -46,26 +45,22 @@ public class GameLogic {
 		field = playfield;
 	}
 	//---methods for game process---
-	public void startGame(Player player1, Player player2, boolean pRecordGameIsEnabled, String pGameName, Class<?> pPlayer1, Class<?> pPlayer2) throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException{
+	public void startGame( boolean pRecordGameIsEnabled, String pGameName, Player pPlayer1, Player pPlayer2) throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException{
 		//if both player are one object one Player controls both white and red
-		twoPlayerMode = pPlayer1 == null && pPlayer2 == null;
-		//load KI's
-		if(pPlayer1 != null) {		
-			player1 = (Player)pPlayer1.newInstance();
-			gui.console.printInfo("Gamelogic", "Class " + playerWhite.getName() + " was loaded successfully");
-		}
-		if(pPlayer2 != null) {			
-			player2 = (Player)pPlayer2.newInstance();
-			gui.console.printInfo("Gamelogic", "Class " + playerRed.getName() + " was loaded successfully");
-		}
+		twoPlayerMode = pPlayer1 == pPlayer2;
 		//choose random beginner
 		if(Math.random() < 0.5){
-			playerWhite = player1;
-			playerRed = player2;
+			
+			playerWhite = pPlayer1;
+			
+			playerRed = pPlayer2;
+			
 		}
 		else {
-			playerWhite = player2;
-			playerRed = player1;
+			playerWhite = pPlayer2;
+			
+			playerRed = pPlayer1;
+			
 		}
 		recordGameIsEnabled = pRecordGameIsEnabled;
 		gameName = pGameName;

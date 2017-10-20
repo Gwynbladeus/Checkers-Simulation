@@ -73,7 +73,7 @@ public class GameSettings extends JFrame{
             	}
 			
 					try {
-						gui.getGameLogic().startGame(gui.playfieldpanel, gui.playfieldpanel, recordGameIsEnabled, gameName, getPlayer1Class(),getPlayer2Class());
+						gui.getGameLogic().startGame(recordGameIsEnabled, gameName, getPlayer1(),getPlayer2());
 					} catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException
 							| IllegalArgumentException | InvocationTargetException | ClassNotFoundException
 							| MalformedURLException e) {
@@ -126,36 +126,41 @@ public class GameSettings extends JFrame{
 		playerNameList[listLength-1] = "player";
 		return playerNameList;
 	}
-	public Class<?> getPlayer1Class() throws ClassNotFoundException, MalformedURLException{
+	public Player getPlayer1() throws ClassNotFoundException, MalformedURLException, InstantiationException, IllegalAccessException{
 		if(player1ComboBox.getSelectedItem().equals("player")) {
-			return null;
+			return gui.playfieldpanel;
 		} 
-		url = new URL("file:/C:/Users/Marco/Desktop/Workspace/Checker Simulation/resources/AI"+ player1ComboBox.getSelectedItem());
+		url = new URL("file:/C:/Users/Marco/Desktop/Workspace/Checker Simulation/resources/AI");
 		loader = new URLClassLoader(new URL[]{ url });
-		ai = loader.loadClass((String) player2ComboBox.getSelectedItem());
+		ai = loader.loadClass(((String) player1ComboBox.getSelectedItem()).substring(0,player1ComboBox.getSelectedItem().toString().length()-6));
+		gui.console.printInfo("GameSettings","Class" + ai.getName() + " was loade successfully");
 		if(testForPlayerInterface(ai)) {
-			return ai;
+			return (Player)ai.newInstance();
 		}
-		return null; 
+		return gui.playfieldpanel; 
 	}
-	public Class<?> getPlayer2Class() throws ClassNotFoundException, MalformedURLException{
+	public Player getPlayer2() throws ClassNotFoundException, MalformedURLException, InstantiationException, IllegalAccessException{
 		if(player2ComboBox.getSelectedItem().equals((String) player1ComboBox.getSelectedItem())) {
-			return null;
+			return gui.playfieldpanel;
 		} 
-		url = new URL("file:C/Users/Marco/Desktop/Workspace/Checker Simulation/resources/AI"+ player2ComboBox.getSelectedItem());
+		url = new URL("file:C/Users/Marco/Desktop/Workspace/Checker Simulation/resources/AI");
 		loader = new URLClassLoader(new URL[]{ url });
-		ai = loader.loadClass((String) player2ComboBox.getSelectedItem());
+		ai = loader.loadClass(((String) player2ComboBox.getSelectedItem()).substring(0,player2ComboBox.getSelectedItem().toString().length()-6));
+		gui.console.printInfo("GameSettings","Class" + ai.getName() + " was loaded successfully");
 		if(testForPlayerInterface(ai)) {
-			return ai;
+			
+			return (Player)ai.newInstance();
 		}
-		return null;
+		return gui.playfieldpanel;
 	}
 	private boolean testForPlayerInterface(Class<?> ai) {
 		for(Class<?> c : ai.getInterfaces()) {
-			if(c.equals(Player.class)) {				
+			if(c.equals(Player.class)) {
+				gui.console.printInfo("GameSettings","Interface player was found in " + ai.getName());
 				return true;
 			}
 		}
+		gui.console.printWarning("GameSettings","Interface could not be found in "+ ai.getName());
 		return false;
 	}
 }
