@@ -18,16 +18,16 @@ import generic.List;
  * @author Till
  *
  */
+@SuppressWarnings("serial")
 public class Console extends JPanel{
 	private DLList<String> previousCommands;
 
 	private List<CommandListener> listener;
-	private boolean pattDecision;
 	private JScrollPane scrollpaneOutput;
 	private JScrollPane scrollpaneInput;
-    public JTextArea output;
-    private JTextArea input;
-    private DefaultCaret caret;
+  public JTextArea output;
+	private JTextArea input;
+  private DefaultCaret caret;
 
 	public Console() {
 		super();
@@ -110,6 +110,17 @@ public class Console extends JPanel{
 	public void addCommandListener(CommandListener l){
 		listener.append(l);
 	}
+	
+	public void removeCommandListener(CommandListener l){
+		listener.toFirst();
+		while(listener.hasAccess()){
+			if(listener.getContent() == l){
+				listener.remove();
+				return;
+			}
+			listener.next();
+		}
+	}
 
 	private void processCommand(String in) {
 		boolean wasProcessed = true;
@@ -123,11 +134,6 @@ public class Console extends JPanel{
 		case "sayhello":
 			printCommandOutput("This is an easteregg!!:", "Hello World");
 			break;
-		case "Yes":
-			if(pattDecision == true){
-				//TODO linking to finish game method in gmlc
-			}
-			break;
 		default:
 			wasProcessed = false;
 			break;
@@ -135,17 +141,18 @@ public class Console extends JPanel{
 		//go through all listeners
 		listener.toFirst();
 		while(listener.hasAccess()){
-			//if processCommand returned true AND was
-			if(listener.getContent().processCommand(in) && !wasProcessed){
+			if(listener.getContent().processCommand(in)){
 				wasProcessed = true;
 			}
 			listener.next();
 		}
 		if(!wasProcessed){
-			printWarning("The command could not be processed by any module.\nMaybe you wrote it wrong.", "Console");
+			printCommandOutput("The command could not be processed by any module.", "Maybe you wrote it wrong.");
 		}
 	}
-
+	public void print(String arg){
+		output.append(arg + "\n");
+	}
 	private void printCommand(String arg){
 		output.append(">>" + arg + "\n");
 	}
@@ -172,8 +179,5 @@ public class Console extends JPanel{
 	public void updateForeground(Color color){
 		output.setForeground(color);
 		input.setForeground(color);
-	}
-	public void enablePattDecision(boolean b) {
-		pattDecision = b; 
 	}
 }

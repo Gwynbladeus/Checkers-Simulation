@@ -7,6 +7,7 @@ import java.util.Date;
 import checkers.Figure.FigureColor;
 import checkers.Figure.FigureType;
 import checkers.Move.MoveType;
+import generic.List;
 import gui.PlayfieldDisplay;
 import gui.PlayfieldPanel;
 
@@ -21,8 +22,9 @@ public class Playfield {
 	FileReader reader;
 	BufferedReader bufferedReader;
 	PrintWriter writer;
-	
+
 	int movesWithoutJumps = 0;
+
 	public Playfield() {
 		this(8);
 	}
@@ -50,7 +52,7 @@ public class Playfield {
 		String info = bufferedReader.readLine();
 		if(Integer.parseInt(info) != SIZE){
 			//TODO what to do here?
-			throw new IOException("This savefile does not work for this palyfield!");
+			throw new IOException("This savefile does not work for this playfield!");
 		}
 		else{
 			info = bufferedReader.readLine();
@@ -107,6 +109,7 @@ public class Playfield {
 		long currentTime = new Date().getTime();
 		String fileName = String.valueOf(currentTime);
 		if(recordGame){
+			// TODO es muss nicht jedes mal ein neuer ordner erstellt werden
 			File filePath = new File("resources/" + gameName);
 			filePath.mkdirs();
 			File file = new File("resources/" + gameName + "/" + fileName + ".pfs");
@@ -147,7 +150,7 @@ public class Playfield {
             	}
             	else{
             		writer.write("0");
-            		
+
             	}
             }
         }
@@ -182,9 +185,9 @@ public class Playfield {
 	}
 
 	public void changeFigureToKing(int x, int y){
-		field[x][y].setFigureType(FigureType.KING);		
+		field[x][y].setFigureType(FigureType.KING);
 	}
-	
+
 	public void executeMove(Move m){
 		//TODO alles
 		//x and y after move execution
@@ -290,7 +293,11 @@ public class Playfield {
 	public int getMovesWithoutJumps(){
 		return movesWithoutJumps;
 	}
+	public List getPossibleMoves(FigureColor color){		
+		return new List<Move>();
+	}
 	public int getSize() {
 		return SIZE;
 	}
+	
 }

@@ -129,11 +129,11 @@ public class Move {
 		return move;
 	}
 	
-	public static List<Move> getAllJumps(Figure figure, Playfield field){
+	public static List<Move> getPossibleJumps(Figure figure, Playfield field){
 		//first moves has maximum size to avoid out of bounds exceptions
 		List<Move> moves = new List<Move>();
 		//used for recursive multijump testing
-		Playfield tmp;
+		//Playfield tmp;
 		if(figure.x + 2 < field.SIZE){
 			if(figure.y + 2 < field.SIZE){
 				if(field.isOccupied(figure.x+1, figure.y+1) 

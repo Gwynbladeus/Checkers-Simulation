@@ -1,14 +1,13 @@
 package gui;
 import javax.swing.event.*;
-import java.awt.event.*;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.*;
 
+@SuppressWarnings("serial")
 public class ColorSettings extends JFrame{
 
 	private ImageIcon colorSettingsIcon;

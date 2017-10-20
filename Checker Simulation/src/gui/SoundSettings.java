@@ -2,6 +2,7 @@ package gui;
 
 import javax.swing.*;
 
+@SuppressWarnings("serial")
 public class SoundSettings extends JFrame{
 
 	ImageIcon soundSettingsIcon;
