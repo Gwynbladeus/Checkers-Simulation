@@ -1,28 +1,39 @@
 package checkers;
 
+import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
 import checkers.Figure.FigureColor;
 import checkers.Figure.FigureType;
+import checkers.Move.MoveType;
 import checkers.Player;
+import generic.List;
 import gui.GUI;
+import gui.GUI.AISpeed;
 
 /**
- * provides methods for game logic
+ * The GameLogic is responsible for the process of one game with the same players. Every game a new GameLogic has to be created.
+ * Because it has to communicate with various other objects, it has access to the GUI and the playfield.
+ * <p>
+ * It also includes the static testing methods, which are responsible for the correct execution of the rules.
+ * <p>
+ * Moreover, the GameLogic is running on a different thread in order to avoid collision with the PlayfieldPanel.
  * @author Till
  *
  */
-
 public class GameLogic {
-	public enum Situations{WHITEWIN, REDWIN, DRAW,NOTHING};
+	public enum Situations{WHITEWIN, REDWIN, DRAW,NOTHING, STOP};
 	/**
 	 * the default playfield to use
 	 */
 	private Playfield field;
 	private boolean recordGameIsEnabled;
 	private String gameName;
-	private int turnCount = 0;
+	private int turnCounterRed;
+	private int turnCounterWhite;
+	private int winCountRed;
+	private int winCountWhite;
+	private int drawCount;
 	private Player playerWhite;
 	private Player playerRed;
 	private boolean redFailedOnce = false;
@@ -32,66 +43,64 @@ public class GameLogic {
 	String namePlayerRed;
 	
 	private boolean twoPlayerMode = false;
-	private FigureColor player1Color;
-	private FigureColor player2Color;
 	private FigureColor inTurn;
 	private GUI gui;
 	
+	private boolean pause;
+	private boolean displayActivated;
+	private int slowness;
 	private int currentRound = 0;
 	private int rounds;
+	
+	//For NN!
+	private Situations endSituation;
+	private boolean failed;
+	
 	public GameLogic(){
 		this(new Playfield());
 	}
 	/**
-	 *
-	 * @param playfield default playfield
+	 * The Constructor resets all counters to 0 and passes a new Playfield.
+	 * <p>
+	 * @param playfield  default playfield
 	 */
 	public GameLogic(Playfield playfield) {
 		field = playfield;
+		winCountRed = 0;
+		winCountWhite = 0;
+		drawCount = 0;
+		
 	}
-	//---methods for game process---
-	public void startGame( boolean pRecordGameIsEnabled, String pGameName, Player pPlayer1, Player pPlayer2, int pRounds){
+	/**
+	 * The Constructor resets all counters to 0 and passes a new Playfield.
+	 * <p>
+	 * @param playfield  default playfield
+	 */
+	public void startGame( boolean pRecordGameIsEnabled, String pGameName, Player pPlayerRed, Player pPlayerWhite, int pRounds, int pSlowness, boolean pDisplayActivated){
+		pause = false;
+		//how many game should be played
 		rounds = pRounds;
 		//if both player are one object one Player controls both white and red
-		twoPlayerMode = pPlayer1 == pPlayer2;
-		String namePlayer1 = "Human Player1";
-		String namePlayer2 = "Human Player2";
-		if(pPlayer1 != null) {
-			
-			namePlayer1 = pPlayer1.getName();
-		}
-		if(pPlayer2 != null) {
-			namePlayer2 = pPlayer2.getName();
-			
-		}
+		twoPlayerMode = pPlayerRed == pPlayerWhite;
 		
-		//choose random beginner
-		if(Math.random() < 0.5){
-			player1Color = FigureColor.WHITE;
-			playerWhite = pPlayer1;			
-			gui.console.printInfo("gmlc","The White pieces have been assigned to " + namePlayer1 + "");
-			namePlayerWhite = namePlayer1;
-			player2Color = FigureColor.RED;
-			playerRed = pPlayer2;
-			gui.console.printInfo("gmlc","The red pieces have been assigned to " + namePlayer2 + "");
-			namePlayerRed = namePlayer2;
-		}
-		else {
-			player2Color = FigureColor.WHITE;
-			playerWhite = pPlayer2;
-			gui.console.printInfo("gmlc","The White pieces have been assigned to " + namePlayer2 + "");
-			namePlayerWhite = namePlayer2;
-			player1Color = FigureColor.RED;
-			playerRed = pPlayer1;
-			gui.console.printInfo("gmlc","The red pieces have been assigned to " + namePlayer1 + "");
-			namePlayerRed = namePlayer1;
-		}
+		namePlayerRed = pPlayerRed.getName();
+		namePlayerWhite = pPlayerWhite.getName();
+		
+		playerRed = pPlayerRed;
+		playerWhite = pPlayerWhite;
+		//SlowMode
+		slowness = pSlowness;
+		//display
+		displayActivated = pDisplayActivated;
+		
 		recordGameIsEnabled = pRecordGameIsEnabled;
 		gameName = pGameName;
-		turnCount = 0;
+		turnCounterRed = 0;
+		turnCounterWhite = 0;
 		//reset variables
-		redFailedOnce = false;
-		whiteFailedOnce = false;
+		//TODO das gilt nicht beim richtigen game
+		redFailedOnce = true;
+		whiteFailedOnce = true;
 
 		//testet ob empty weil ja schon ein psf geloaded werden konnte
 		if(field.isEmpty()) {
@@ -99,8 +108,8 @@ public class GameLogic {
 				field.createStartPosition();
 			} catch (IOException e) {
 				gui.console.printWarning(
-						"Could not load startposition. Please check if your playfieldsaves are at the right position",
-						"Gamelogic:startGame");
+					"Could not load startposition. Please check if your playfieldsaves are at the right position",
+					"Gamelogic:startGame");
 				return;
 			}
 		}
@@ -113,122 +122,205 @@ public class GameLogic {
 		gui.console.printInfo("gmlc", "Therefore " + namePlayerRed + "starts first");
 		gui.console.printInfo("gmlc","Playing "+ (rounds-currentRound) + " more Rounds before reset");
 		inTurn = FigureColor.RED;
+		if(!playerRed.equals(gui.playfieldpanel)) {
+			try {
+				Thread.sleep(slowness);
+			} catch (InterruptedException e) {
+				gui.console.printWarning("");
+				e.printStackTrace();
+			}
+		}
 		playerRed.requestMove();
 	}
 	public void makeMove(Move m){
-		if(!(field.field[m.getX()][m.getY()].color == inTurn) || !testMove(m)){
+		if(m.getMoveType() == MoveType.INVALID || field.field[m.getX()][m.getY()].getFigureColor() != inTurn || !testMove(m)){
 			gui.console.printWarning("Invalid move!", "Gamelogic");
 			if(inTurn == FigureColor.RED){
 				if(redFailedOnce){
-					finishGameTest(Situations.WHITEWIN);
+					finishGameTest(Situations.WHITEWIN,true);
+					return;
 				}
 				else {
 					redFailedOnce = true;
+					playerRed.requestMove();
 				}
 			}
 			else {
 				if(whiteFailedOnce){
-					finishGameTest(Situations.REDWIN);
-
+					finishGameTest(Situations.REDWIN,true);
+					return;
 				}
 				else {
 					whiteFailedOnce = true;
+					playerWhite.requestMove();
 				}
 			}
 		}
-		else {//move is valid
+		else {//move is valid		
+			//increment turn count
+			incrementTurnCounter();
 			field.executeMove(m);
 			//automatic figureToKing check
 			testFigureToKing();
 			//test if game is Finished
-			finishGameTest(testFinished());
-			//for game recording
-			if(recordGameIsEnabled) {
-				infosGameRecording();
+			Situations gamestate = testFinished();
+			if(gamestate != Situations.NOTHING){
+				finishGameTest(gamestate,false);
 			}
-			//changing turn
-			turnCount++;
-			inTurn = (inTurn == FigureColor.RED) ? FigureColor.WHITE : FigureColor.RED;
-			switch(inTurn){
+			else {
+				//for game recording
+				if(recordGameIsEnabled) {
+					infosGameRecording();
+				}
+				inTurn = (inTurn == FigureColor.RED) ? FigureColor.WHITE : FigureColor.RED;
+				if(!pause) {
+					moveRequesting();
+				}
+			}
+		}
+	}
+	private void incrementTurnCounter() {
+		if(inTurn == FigureColor.RED) {
+			turnCounterRed++;
+		}
+		else {
+			turnCounterWhite++;
+		}
+	}
+	private void moveRequesting() {
+		switch(inTurn){
 			case RED:
+				if(!playerRed.equals(gui.playfieldpanel)) {
+					try {
+						Thread.sleep(slowness);
+					} catch (InterruptedException e) {
+						gui.console.printWarning("");
+						e.printStackTrace();
+					}
+				}
 				playerRed.requestMove();
 				break;
 			case WHITE:
+				if(!playerRed.equals(gui.playfieldpanel)) {
+					try {
+						Thread.sleep(slowness);
+					} catch (InterruptedException e) {
+						gui.console.printWarning("");
+						e.printStackTrace();
+					}
+				}
 				playerWhite.requestMove();
 				break;
-			}
 		}
 	}
 	public void requestDraw(){
 		if(playerRed.acceptDraw() && playerWhite.acceptDraw()){
-			finishGameTest(Situations.DRAW);
+			finishGameTest(Situations.DRAW,false);
 		}
 	}
 	//---
 	private Situations testFinished(){
-		if(Move.getPossibleMoves(FigureColor.RED, field).length == 0) {
+		//red has to make the next move. So if Red has just moved it does not need to move in the next round
+		if(inTurn == FigureColor.WHITE && Move.getPossibleMoves(FigureColor.RED, field).length == 0) {
 			return Situations.WHITEWIN;
 		}
-		if(Move.getPossibleMoves(FigureColor.WHITE, field).length == 0) {
+		if(inTurn == FigureColor.RED && Move.getPossibleMoves(FigureColor.WHITE, field).length == 0) {
 			return Situations.REDWIN;
 		}
 		
 		//test for draw Situation
-		if(field.getMovesWithoutJumps() == 15) {
-			if(playerRed.acceptDraw() && playerWhite.acceptDraw() ){
-				return Situations.DRAW;
-			}
+		if(field.getMovesWithoutJumps() == 30) {
+			requestDraw();
 		}
 		
 		
-		if(field.getMovesWithoutJumps() == 30) {
+		if(field.getMovesWithoutJumps() == 60) {
 			return Situations.DRAW;
 		}
 		return Situations.NOTHING;
 	}
-	private void finishGameTest(Situations end) {
+	public void finishGameTest(Situations end, boolean pFailed) {
+		failed = pFailed;
+		endSituation = end;
 		switch(end) {
 		case DRAW:
 			gui.console.printInfo("GameLogic", "Game is finished!");
 			gui.console.printInfo("GameLogic", "Result: Draw!");
+			drawCount++;			
 			break;
 
 		case REDWIN:
 			gui.console.printInfo("GameLogic", "Game is finished!");
-			gui.console.printInfo("GameLogic", "Result: Red won the game!");
+			if(failed) {
+				gui.console.printInfo("GameLogic", playerWhite.getName() +"(White) did a wrong move!");
+			}
+			
+			gui.console.printInfo("GameLogic", "Result: "+ playerRed.getName() +"(Red) won the game!");
+			winCountRed++;
 			break;
 		case WHITEWIN:
 			gui.console.printInfo("GameLogic", "Game is finished!");
-			gui.console.printInfo("GameLogic", "Result: White won the game!");
+			if(failed) {
+				gui.console.printInfo("GameLogic", playerRed.getName() +"(Red) did a wrong move!");
+			}
+			gui.console.printInfo("GameLogic", "Result: "+ playerWhite.getName() +"(White) won the game!");
+			winCountWhite++;
 			break;
-
+		case STOP:
+			gui.console.printInfo("GameLogic", "Game was stopped");
+			break;
 		case NOTHING:
 			return;
 		}
-		try {
-			field.createStartPosition();
-		} catch (IOException e1) {
-			gui.console.printWarning("gmlc","failed to load the pfs file startPositionForSize8");
-			e1.printStackTrace();
-		}
-		currentRound++;
-		if(currentRound == rounds) {
+		
+		++currentRound;
+		if(currentRound == rounds || end == Situations.STOP) {
+			try {
+				field.loadGameSituation(new File("resources/playfieldSaves/noFigures.pfs"));
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			gui.playfieldpanel.updateDisplay();
+			
+			gui.console.printInfo("The AI" + playerWhite.getName() + " (White) won " + winCountWhite + " times.","GameLogic");
+			gui.console.printInfo( "The AI" + playerRed.getName() + " (Red) won " + winCountRed + " times.","GameLogic");
+			gui.console.printInfo("Draw: " + drawCount + " times.", "GameLogic");
+			
+			gui.setAISpeed(AISpeed.NOTACTIVE);
+			gui.setEnableResume(false);
+			gui.setEnablePause(false);
+			gui.setEnableStop(false);
+			//currentRound = 0;
 			//TODO "hard" reset 
 			// TODO maybe statistic for ki playing against each other and creating a file with all information
 		}
 		else {
-			startGame(recordGameIsEnabled, gameName, playerRed, playerWhite, rounds);
-		}
-		
-		
-		//TODO reset playfield and everything else
+			try {
+				field.createStartPosition();
+				new Thread(){
+					public void run(){
+						try {
+							startGame(recordGameIsEnabled, gameName, playerWhite, playerRed, rounds, slowness, displayActivated);
+						} catch (IllegalArgumentException | SecurityException e) {
+							gui.console.printWarning("gmlc", "failed to load the ai");
+							e.printStackTrace();
+						}
+					}
+				}.start();
+				//startGame(recordGameIsEnabled, gameName, playerRed, playerWhite, rounds, slowness, displayActivated);
+			} catch (IOException e) {
+				gui.console.printWarning("failed to load the pfs file startPositionForSize8","GameLogic");
+				e.printStackTrace();
+			}			
+		}		
 	}
 	public boolean getTwoPlayerMode(){
 		return twoPlayerMode;
 	}
 	private void infosGameRecording() {
 		try {
-			field.saveGameSituation(gameName, inTurn, turnCount, playerRed.getName(), playerWhite.getName());
+			field.saveGameSituation(gameName, inTurn, (turnCounterRed + turnCounterWhite), playerRed.getName(), playerWhite.getName());
 		} catch (IOException e) {
 			gui.console.printWarning("playfield could not be saved. IOException: " + e);
 			e.printStackTrace();
@@ -264,6 +356,10 @@ public class GameLogic {
 		}
 		FigureColor color = f.colorOf(x, y);
 		FigureType type = f.getType(x, y);
+		//TODO wenn es kein Jump ist aber jumps möglich sind return false
+		if(m.getMoveType() == MoveType.STEP && Move.getPossibleJumps(f.field[x][y], f).length != 0){
+			return false;
+		}
 		switch(m.getMoveType()){
 		case INVALID:
 			return false;
@@ -377,27 +473,47 @@ public class GameLogic {
 	public boolean testMove(Move move){
 		return testMove(move, field);
 	}
-	public static boolean testForMultiJump(int x, int y, Playfield f){
-		return false;
+	public static List<Move> testForMultiJump(int x, int y, Playfield f) {
+		List<Move> list =Move.getPossibleJumps(f.field[x][y], f);
+		if(list.length != 0) {
+			return list;
+		}
+		else
+		{
+		return null;
+		}
 	}
-	public boolean testForMultiJump(int x, int y){
+	public List<Move> testForMultiJump(int x, int y){
 		return testForMultiJump(x,y, field);
 	}
 	public Playfield getPlayfield(){
 		return field;
 	}
-	public FigureColor getColorForPlayer1() {
-		return player1Color;
-	}
-	public FigureColor getColorForPlayer2() {
-		return player2Color;
-	}
-	//TODO das muss eigentlich nicht sein
-	// public void setPlayfield(Playfield f){
-	// 	field = f;
-	// }
 	public void linkGUI(GUI gui) {
 		this.gui = gui;
 	}
+	public void setSlowness(int pSlowness) {
+		slowness = pSlowness;
+	}
+	public void setPause(boolean b) {
+		pause = b;
+		if(b == false) {			
+			moveRequesting();
+		}
+	}
 	
+	public Situations getFinalSituation() {
+		return endSituation;
+		
+	}
+	public boolean getFailed() {
+		return failed;
+	}
+	
+	public int getTurnCountRed() {
+		return turnCounterRed;
+	}
+	public int getTurnCountWhite() {
+		return turnCounterWhite;
+	}
 }

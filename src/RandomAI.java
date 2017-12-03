@@ -8,15 +8,16 @@ import checkers.Player;
 import generic.List;
 import gui.Console;
 
-public class AiTestTest implements Player {
-	String name = "Test random Ai";
+public class RandomAI implements Player {
+	String name;
 	List<Move> moveList;
 	GameLogic gmlc;
 	Console console;
 	FigureColor aiFigureColor;
 	Random rand;
 
-	public AiTestTest(GameLogic pGmlc, Console pConsole) {
+	public RandomAI(GameLogic pGmlc, Console pConsole) {
+		name = "Random Ai";
 		rand = new Random();
 		moveList = new List<Move>();
 		gmlc = pGmlc;

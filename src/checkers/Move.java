@@ -26,7 +26,7 @@ public class Move {
 	private MoveType type;
 	private MoveDirection[] directions;
 	private int steps;
-	
+
 	private int x, y;
 	
 	public Move(MoveDirection[] pDirection, int pSteps, int pX, int pY) {
@@ -41,6 +41,10 @@ public class Move {
 	public Move(MoveDirection pDirection, int pX, int pY){
 		this(new MoveDirection[4], 0, pX, pY);
 		addStep(pDirection);
+	}
+	public Move(MoveDirection pDirection, MoveType pType, int pX, int pY){
+		this(pDirection, pX, pY);
+		type = pType;
 	}
 	public Move(MoveType pType) {
 		type = pType;
@@ -83,7 +87,8 @@ public class Move {
 	}
 	/**
 	 * turns an array of coordinates into a move object
-	 * the move is not guaranteed to be valid!
+	 * !ATTENTION!:the method does not apply complete move validation!
+	 * So the move could not be valid although it is not set invalid!
 	 * test with Gamelogic.testMove()!
 	 * @param coords that the figure goes to during the move in chronological order
 	 * @return move object that represents the move described by the coordinates 
@@ -143,28 +148,29 @@ public class Move {
 		Playfield tmp;
 		List<Move> multiJumps;
 		Move m;
-		if(figure.x + 2 < field.SIZE
-			&& (figure.getFigureType() == FigureType.KING || figure.getFigureColor() == FigureColor.WHITE)){
-			if(figure.y + 2 < field.SIZE){
+		if(figure.y + 2 < field.SIZE
+			&& (figure.getFigureType() == FigureType.KING || figure.getFigureColor() == FigureColor.RED)){
+			if(figure.x + 2 < field.SIZE){
 				if(field.isOccupied(figure.x+1, figure.y+1) 
-					&& field.field[figure.x+1][figure.y+1].color != figure.color
+					&& field.field[figure.x+1][figure.y+1].getFigureColor() != figure.getFigureColor()
 					&& !field.isOccupied(figure.x+2, figure.y+2)){
-					moves.append(new Move(MoveDirection.FR, figure.x, figure.y));
+					moves.append(new Move(MoveDirection.FR, MoveType.JUMP, figure.x, figure.y));
 					moves.toLast();
 					tmp = field.copy();
-					tmp.executeMove(moves.getContent());
+					tmp.executeMove(moves.get());
 					multiJumps = getPossibleJumps(tmp.field[figure.x+2][figure.y+2], tmp);
 					multiJumps.toFirst();
 					if(multiJumps.length > 0){
 						while(multiJumps.hasAccess()){
 							//take the move we just created and copy it
-							m = moves.getContent().copy();
+							m = moves.get().copy();
 							//append the other steps of the multijump
-							for(int steps = 0; steps < multiJumps.getContent().getSteps(); steps++){
-								m.addStep(multiJumps.getContent().getMoveDirection(0));
+							for(int steps = 0; steps < multiJumps.get().getSteps(); steps++){
+								m.addStep(multiJumps.get().getMoveDirection(steps));
+								m.setMoveType(MoveType.MULTIJUMP);
 							}
 							//save temporarily in multiJumps
-							multiJumps.setContent(m);
+							multiJumps.set(m);
 							multiJumps.next();
 						}
 						//remove the old single jump
@@ -175,23 +181,24 @@ public class Move {
 					}
 				}
 			}
-			if(figure.y - 2 >= 0){
-				if(field.isOccupied(figure.x+1, figure.y-1) 
-					&& field.field[figure.x+1][figure.y-1].color != figure.color
-					&& !field.isOccupied(figure.x+2, figure.y-2)){
-					moves.append(new Move(MoveDirection.BR, figure.x, figure.y));
+			if(figure.x - 2 >= 0){
+				if(field.isOccupied(figure.x-1, figure.y+1) 
+					&& field.field[figure.x-1][figure.y+1].getFigureColor() != figure.getFigureColor()
+					&& !field.isOccupied(figure.x-2, figure.y+2)){
+					moves.append(new Move(MoveDirection.FL, MoveType.JUMP, figure.x, figure.y));
 					moves.toLast();
 					tmp = field.copy();
-					tmp.executeMove(moves.getContent());
-					multiJumps = getPossibleJumps(tmp.field[figure.x+2][figure.y-2], tmp);
+					tmp.executeMove(moves.get());
+					multiJumps = getPossibleJumps(tmp.field[figure.x-2][figure.y+2], tmp);
 					multiJumps.toFirst();
 					if(multiJumps.length > 0){
 						while(multiJumps.hasAccess()){
-							m = moves.getContent().copy();
-							for(int steps = 0; steps < multiJumps.getContent().getSteps(); steps++){
-								m.addStep(multiJumps.getContent().getMoveDirection(0));
+							m = moves.get().copy();
+							for(int steps = 0; steps < multiJumps.get().getSteps(); steps++){
+								m.addStep(multiJumps.get().getMoveDirection(steps));
+								m.setMoveType(MoveType.MULTIJUMP);
 							}
-							multiJumps.setContent(m);
+							multiJumps.set(m);
 							multiJumps.next();
 						}
 						moves.remove();
@@ -200,25 +207,26 @@ public class Move {
 				}
 			}
 		}
-		if(figure.x - 2 >= 0
-			&& (figure.getFigureType() == FigureType.KING || figure.getFigureColor() == FigureColor.RED)){
-			if(figure.y + 2 < field.SIZE){
-				if(field.isOccupied(figure.x-1, figure.y+1) 
-					&& field.field[figure.x-1][figure.y+1].color != figure.color
-					&& !field.isOccupied(figure.x-2, figure.y+2)){
-					moves.append(new Move(MoveDirection.FL, figure.x, figure.y));
+		if(figure.y - 2 >= 0
+			&& (figure.getFigureType() == FigureType.KING || figure.getFigureColor() == FigureColor.WHITE)){
+			if(figure.x + 2 < field.SIZE){
+				if(field.isOccupied(figure.x+1, figure.y-1) 
+					&& field.field[figure.x+1][figure.y-1].getFigureColor() != figure.getFigureColor()
+					&& !field.isOccupied(figure.x+2, figure.y-2)){
+					moves.append(new Move(MoveDirection.BR, MoveType.JUMP, figure.x, figure.y));
 					moves.toLast();
 					tmp = field.copy();
-					tmp.executeMove(moves.getContent());
-					multiJumps = getPossibleJumps(tmp.field[figure.x-2][figure.y+2], tmp);
+					tmp.executeMove(moves.get());
+					multiJumps = getPossibleJumps(tmp.field[figure.x+2][figure.y-2], tmp);
 					multiJumps.toFirst();
 					if(multiJumps.length > 0){
 						while(multiJumps.hasAccess()){
-							m = moves.getContent().copy();
-							for(int steps = 0; steps < multiJumps.getContent().getSteps(); steps++){
-								m.addStep(multiJumps.getContent().getMoveDirection(0));
+							m = moves.get().copy();
+							for(int steps = 0; steps < multiJumps.get().getSteps(); steps++){
+								m.addStep(multiJumps.get().getMoveDirection(steps));
+								m.setMoveType(MoveType.MULTIJUMP);
 							}
-							multiJumps.setContent(m);
+							multiJumps.set(m);
 							multiJumps.next();
 						}
 						moves.remove();
@@ -226,23 +234,24 @@ public class Move {
 					}
 				}
 			}
-			if(figure.y - 2 >= 0){
+			if(figure.x - 2 >= 0){
 				if(field.isOccupied(figure.x-1, figure.y-1) 
-					&& field.field[figure.x-1][figure.y-1].color != figure.color
+					&& field.field[figure.x-1][figure.y-1].getFigureColor() != figure.getFigureColor()
 					&& !field.isOccupied(figure.x-2, figure.y-2)){
-					moves.append(new Move(MoveDirection.BL, figure.x, figure.y));
+					moves.append(new Move(MoveDirection.BL, MoveType.JUMP, figure.x, figure.y));
 					moves.toLast();
 					tmp = field.copy();
-					tmp.executeMove(moves.getContent());
+					tmp.executeMove(moves.get());
 					multiJumps = getPossibleJumps(tmp.field[figure.x-2][figure.y-2], tmp);
 					multiJumps.toFirst();
 					if(multiJumps.length > 0){
 						while(multiJumps.hasAccess()){
-							m = moves.getContent().copy();
-							for(int steps = 0; steps < multiJumps.getContent().getSteps(); steps++){
-								m.addStep(multiJumps.getContent().getMoveDirection(0));
+							m = moves.get().copy();
+							for(int steps = 0; steps < multiJumps.get().getSteps(); steps++){
+								m.addStep(multiJumps.get().getMoveDirection(steps));
+								m.setMoveType(MoveType.MULTIJUMP);
 							}
-							multiJumps.setContent(m);
+							multiJumps.set(m);
 							multiJumps.next();
 						}
 						moves.remove();
@@ -255,46 +264,72 @@ public class Move {
 	}
 	public static List<Move> getPossibleSteps(Figure f, Playfield p){
 		List<Move> moves = new List<Move>();
-		if(f.x + 1 < p.SIZE
-				&& (f.getFigureType() == FigureType.KING || f.getFigureColor() == FigureColor.WHITE)){
-			if(f.y + 1 < p.SIZE){
+		if(f.y + 1 < p.SIZE
+				&& (f.getFigureType() == FigureType.KING || f.getFigureColor() == FigureColor.RED)){
+			if(f.x + 1 < p.SIZE){
 				if(!p.isOccupied(f.x+1, f.y+1)){
-					moves.append(new Move(MoveDirection.FR, f.x, f.y));
+					moves.append(new Move(MoveDirection.FR, MoveType.STEP, f.x, f.y));
 				}
 			}
-			if(f.y - 1 >= 0){
-				if(!p.isOccupied(f.x+1, f.y-1)){
-					moves.append(new Move(MoveDirection.BR, f.x, f.y));
+			if(f.x - 1 >= 0){
+				if(!p.isOccupied(f.x-1, f.y+1)){
+					moves.append(new Move(MoveDirection.FL, MoveType.STEP, f.x, f.y));
 				}
 			}
 		}
-		if(f.x - 1 >= 0
-				&& (f.getFigureType() == FigureType.KING || f.getFigureColor() == FigureColor.RED)){
-			if(f.y + 1 < p.SIZE){
-				if(!p.isOccupied(f.x-1, f.y+1)){
-					moves.append(new Move(MoveDirection.FL, f.x, f.y));
+		if(f.y - 1 >= 0
+				&& (f.getFigureType() == FigureType.KING || f.getFigureColor() == FigureColor.WHITE)){
+			if(f.x + 1 < p.SIZE){
+				if(!p.isOccupied(f.x+1, f.y-1)){
+					moves.append(new Move(MoveDirection.BR, MoveType.STEP, f.x, f.y));
 				}
 			}
-			if(f.y - 1 >= 0){
+			if(f.x - 1 >= 0){
 				if(!p.isOccupied(f.x-1, f.y-1)){
-					moves.append(new Move(MoveDirection.BL, f.x, f.y));
+					moves.append(new Move(MoveDirection.BL, MoveType.STEP, f.x, f.y));
 				}
 			}
 		}
 		return moves;
 	}
-	public static List<Move> getPossibleMoves(Figure figure, Playfield playfield){		
-		return getPossibleJumps(figure, playfield).concat(getPossibleSteps(figure, playfield));
+	public static List<Move> getPossibleMoves(Figure figure, Playfield playfield){
+		List<Move> jumps = getPossibleJumps(figure, playfield);
+		if(jumps.length == 0){
+			return getPossibleSteps(figure, playfield);
+		}
+		else {
+			return jumps;
+		}
 	}
 	public static List<Move> getPossibleMoves(FigureColor color, Playfield playfield){
 		List<Move> moves = new List<Move>();
 		for(Figure f : playfield.getFiguresFor(color)){
 			moves.concat(getPossibleMoves(f, playfield));
 		}
+		List<Move> jumps = new List<Move>();
+		moves.toFirst();
+		while(moves.hasAccess()){
+			if(moves.get().getMoveType() != MoveType.STEP){
+				jumps.append(moves.get());
+				jumps.remove();
+			}
+			moves.next();
+		}
+		if(jumps.length > 0){
+			return jumps;
+		}
 		return moves;
 	}
 	public boolean isInvalid() {
 		return type == MoveType.INVALID;
+	}
+	//for ai:
+	int score = 0;
+	public void setScore(int pScore) {
+		score = pScore;
+	}
+	public int getScore() {
+		return score;
 	}
 }
 
